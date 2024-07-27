@@ -5,6 +5,9 @@ edition = "2021"
 description = "Provides wrappers around common rust types with capped sizes"
 license = "MIT OR Apache-2.0"
 readme = "readme.md"
+repository = "https://github.com/RuairidhWilliamson/capped.git"
+keywords = ["cap", "limit"]
+categories = ["config", "parsing"]
 
 [lints.rust]
 unsafe_code = "forbid"
