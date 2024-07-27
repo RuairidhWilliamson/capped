@@ -8,6 +8,7 @@ readme = "readme.md"
 repository = "https://github.com/RuairidhWilliamson/capped.git"
 keywords = ["cap", "limit"]
 categories = ["config", "parsing"]
+rust-version = "1.60"
 
 [lints.rust]
 unsafe_code = "forbid"

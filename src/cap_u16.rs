@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn serde_u16() -> serde_json::Result<()> {
         let obj: Vec<super::CapU16<10>> = serde_json::from_str("[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]")?;
-        assert_eq!(obj, (0..10).map(super::CapU16).collect::<Vec<_>>());
+        assert_eq!(obj, (0..10).map(cap_u16::CapU16).collect::<Vec<_>>());
 
         let res: serde_json::Result<super::CapU16<2000>> = serde_json::from_str("5000");
         assert!(res.is_err());
