@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use crate::{error::CapError, num::CapNum};
 
 /// A [`u16`] capped in the range 0..`N`
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct CapU8<const N: u8>(u8);
 
 impl<const N: u8> CapNum for CapU8<N> {
@@ -23,6 +23,14 @@ impl<const N: u8> TryFrom<u8> for CapU8<N> {
         } else {
             Err(CapError(PhantomData))
         }
+    }
+}
+
+impl<const N: u8> core::ops::Deref for CapU8<N> {
+    type Target = u8;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

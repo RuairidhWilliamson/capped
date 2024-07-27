@@ -26,6 +26,14 @@ impl<const N: usize> TryFrom<usize> for CapUsize<N> {
     }
 }
 
+impl<const N: usize> core::ops::Deref for CapUsize<N> {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[cfg(feature = "serde")]
 impl<const N: usize> serde::Serialize for CapUsize<N> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
