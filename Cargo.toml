@@ -1,0 +1,32 @@
+[package]
+name = "capped"
+version = "0.0.0"
+edition = "2021"
+description = "Provides wrappers around common rust types with capped sizes"
+license = "MIT OR Apache-2.0"
+readme = "readme.md"
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+std_instead_of_core = "warn"
+std_instead_of_alloc = "warn"
+
+module_name_repetitions = "allow"
+option_if_let_else = "allow"
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[dependencies]
+serde = { version = "1.0", optional = true }
+
+[dev-dependencies]
+serde_json = "1.0"
