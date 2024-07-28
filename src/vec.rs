@@ -9,13 +9,14 @@ impl<const N: usize, T> AsRef<Vec<T>> for CapVec<N, T> {
 }
 
 /// Error returned when converting a vec longer than N
-#[derive(Debug)]
-pub struct CapVecLengthError<const N: usize>;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CapVecLengthError<const N: usize>(usize);
 
 impl<const N: usize> core::fmt::Display for CapVecLengthError<N> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let len = self.0;
         f.write_fmt(format_args!(
-            "cap vec length error, vec cannot be longer than {N}"
+            "cap vec length error, vec of length {len} is longer than {N}"
         ))
     }
 }
@@ -26,10 +27,10 @@ impl<const N: usize, T> TryFrom<Vec<T>> for CapVec<N, T> {
     type Error = CapVecLengthError<N>;
 
     fn try_from(value: Vec<T>) -> Result<Self, Self::Error> {
-        if value.len() < N {
+        if value.len() <= N {
             Ok(Self(value))
         } else {
-            Err(CapVecLengthError)
+            Err(CapVecLengthError(value.len()))
         }
     }
 }
@@ -71,7 +72,7 @@ impl<'de, const N: usize, T: serde::Deserialize<'de>> serde::Deserialize<'de> fo
             type Value = CapVec<N, T>;
 
             fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-                formatter.write_fmt(format_args!("a sequence at most {N} elements"))
+                formatter.write_fmt(format_args!("a sequence of at most {N} elements"))
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
@@ -99,6 +100,18 @@ impl<'de, const N: usize, T: serde::Deserialize<'de>> serde::Deserialize<'de> fo
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn from_vec() {
+        assert_eq!(
+            super::CapVec::<3, u32>::try_from(vec![1, 2, 3]),
+            Ok(super::CapVec::<3, u32>(vec![1, 2, 3]))
+        );
+        assert_eq!(
+            super::CapVec::<3, _>::try_from(vec![1, 2, 3, 4]),
+            Err(super::CapVecLengthError::<3>(4))
+        );
+    }
+
     #[cfg(feature = "serde")]
     #[test]
     fn serde_vec() -> serde_json::Result<()> {
