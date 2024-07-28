@@ -2,9 +2,29 @@ use core::marker::PhantomData;
 
 use crate::{error::CapError, num::CapNum};
 
-/// A [`u16`] capped in the range 0..`N`
+/// A [`usize`] capped in the range 0..`N`
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CapUsize<const N: usize>(usize);
+
+impl<const N: usize> CapUsize<N> {
+    /// Create a new [`CapUsize`] from a [`usize`] by modulo `N`.
+    #[must_use]
+    pub const fn new_wrap(value: usize) -> Self {
+        Self(value % N)
+    }
+
+    /// Add `rhs` to [`CapUsize`] using modulo `N`.
+    #[must_use]
+    pub const fn wrapping_add(self, rhs: usize) -> Self {
+        Self((self.0 + rhs % N) % N)
+    }
+
+    /// Get the inner value
+    #[must_use]
+    pub const fn into_inner(self) -> usize {
+        self.0
+    }
+}
 
 impl<const N: usize> CapNum for CapUsize<N> {
     type Inner = usize;
@@ -18,7 +38,7 @@ impl<const N: usize> TryFrom<usize> for CapUsize<N> {
     type Error = CapError<Self>;
 
     fn try_from(value: usize) -> Result<Self, Self::Error> {
-        if value <= N {
+        if value < N {
             Ok(Self(value))
         } else {
             Err(CapError(PhantomData))
@@ -59,7 +79,7 @@ impl<'de, const N: usize> serde::Deserialize<'de> for CapUsize<N> {
             where
                 E: serde::de::Error,
             {
-                if v <= N {
+                if v < N {
                     Ok(CapUsize(v))
                 } else {
                     Err(E::custom(format!("number {v} is greater than {N}")))
@@ -118,9 +138,9 @@ mod tests {
 
     #[test]
     fn from_usize() {
-        assert_eq!(super::CapUsize::<5>::try_from(5), Ok(super::CapUsize(5)));
+        assert_eq!(super::CapUsize::<5>::try_from(4), Ok(super::CapUsize(4)));
         assert_eq!(
-            super::CapUsize::<5>::try_from(6),
+            super::CapUsize::<5>::try_from(5),
             Err(super::CapError(PhantomData))
         );
     }
@@ -128,10 +148,10 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serde_usize() -> serde_json::Result<()> {
-        let obj: Vec<super::CapUsize<10>> = serde_json::from_str("[6]")?;
-        assert_eq!(obj, vec![cap_usize::CapUsize(6)]);
+        let obj: Vec<super::CapUsize<10>> = serde_json::from_str("[6, 9]")?;
+        assert_eq!(obj, vec![super::CapUsize(6), super::CapUsize(9)]);
 
-        let res: serde_json::Result<Vec<super::CapUsize<10>>> = serde_json::from_str("[24]");
+        let res: serde_json::Result<Vec<super::CapUsize<10>>> = serde_json::from_str("[10]");
         assert!(res.is_err());
 
         Ok(())

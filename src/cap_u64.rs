@@ -6,6 +6,26 @@ use crate::{error::CapError, num::CapNum};
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CapU64<const N: u64>(u64);
 
+impl<const N: u64> CapU64<N> {
+    /// Create a new [`CapU64`] from a [`u64`] by modulo `N`.
+    #[must_use]
+    pub const fn new_wrap(value: u64) -> Self {
+        Self(value % N)
+    }
+
+    /// Add `rhs` to [`CapU64`] using modulo `N`.
+    #[must_use]
+    pub const fn wrapping_add(self, rhs: u64) -> Self {
+        Self((self.0 + rhs % N) % N)
+    }
+
+    /// Get the inner value
+    #[must_use]
+    pub const fn into_inner(self) -> u64 {
+        self.0
+    }
+}
+
 impl<const N: u64> CapNum for CapU64<N> {
     type Inner = u64;
 
@@ -18,7 +38,7 @@ impl<const N: u64> TryFrom<u64> for CapU64<N> {
     type Error = CapError<Self>;
 
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        if value <= N {
+        if value < N {
             Ok(Self(value))
         } else {
             Err(CapError(PhantomData))
@@ -65,7 +85,7 @@ impl<'de, const N: u64> serde::Deserialize<'de> for CapU64<N> {
             where
                 E: serde::de::Error,
             {
-                if v <= N {
+                if v < N {
                     Ok(CapU64(v))
                 } else {
                     Err(E::custom(format!("number {v} is greater than {N}")))
@@ -82,9 +102,9 @@ mod tests {
 
     #[test]
     fn from_u64() {
-        assert_eq!(super::CapU64::<5>::try_from(5), Ok(super::CapU64(5)));
+        assert_eq!(super::CapU64::<5>::try_from(4), Ok(super::CapU64(4)));
         assert_eq!(
-            super::CapU64::<5>::try_from(6),
+            super::CapU64::<5>::try_from(5),
             Err(super::CapError(PhantomData))
         );
     }
@@ -93,9 +113,9 @@ mod tests {
     #[test]
     fn serde_u64() -> serde_json::Result<()> {
         let obj: Vec<super::CapU64<10>> = serde_json::from_str("[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]")?;
-        assert_eq!(obj, (0..10).map(cap_u64::CapU64).collect::<Vec<_>>());
+        assert_eq!(obj, (0..10).map(super::CapU64).collect::<Vec<_>>());
 
-        let res: serde_json::Result<super::CapU64<2000>> = serde_json::from_str("5000");
+        let res: serde_json::Result<super::CapU64<2000>> = serde_json::from_str("2000");
         assert!(res.is_err());
 
         Ok(())
