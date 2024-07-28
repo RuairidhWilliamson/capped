@@ -1,6 +1,6 @@
 /// A wrapper around [`String`] with a limit on its length, its length must be in the range `0..=N`.
 ///
-/// [`CapString`] is capped in characters instead of bytes
+/// [`CapString`] is capped in bytes instead of characters.
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub struct CapString<const N: usize>(String);
 
@@ -16,14 +16,101 @@ impl<const N: usize> AsRef<str> for CapString<N> {
     }
 }
 
+impl<const N: usize> CapString<N> {
+    /// Returns the inner [`String`]
+    #[must_use]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
+    /// Extracts a string slice containing the entire String
+    ///
+    /// See [`String::as_str`]
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    /// Removes all contents.
+    ///
+    /// See [`String::clear`]
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    /// Removes the last character from the string and returns it.
+    ///
+    /// See [`String::pop`]
+    pub fn pop(&mut self) -> Option<char> {
+        self.0.pop()
+    }
+
+    /// Appends the given [`char`] to the end of this [`CapString`] if it will fit within the cap.
+    ///
+    /// An error is returned if the [`char`] cannot be added.
+    ///
+    /// See [`String::push`]
+    /// # Errors
+    /// Will return `Err` if the new string length would be greater than the cap string limit `N`.
+    pub fn push(&mut self, ch: char) -> Result<(), CapStringLengthError<N>> {
+        let len = self.0.len() + ch.len_utf8();
+        if len <= N {
+            self.0.push(ch);
+            Ok(())
+        } else {
+            Err(CapStringLengthError(len))
+        }
+    }
+
+    /// Appends a given string slice onto the end of this [`CapString`] if it will fit within the cap.
+    ///
+    /// An error is returned if the string cannot be added.
+    ///
+    /// See [`String::push_str`]
+    /// # Errors
+    /// Will return `Err` if the new string length would be greater than the cap string limit `N`.
+    pub fn push_str(&mut self, string: &str) -> Result<(), CapStringLengthError<N>> {
+        let len = self.0.len() + string.len();
+        if len <= N {
+            self.0.push_str(string);
+            Ok(())
+        } else {
+            Err(CapStringLengthError(len))
+        }
+    }
+
+    /// Shortens [`CapString`] to the specified length.
+    ///
+    /// If `new_len` is greater than or equal to the string's current length, this has no effect.
+    ///
+    /// See [`String::truncate`]
+    ///
+    /// # Panics
+    /// Panics if `new_len` does not lie on a [`char`] boundary.
+    pub fn truncate(&mut self, new_len: usize) {
+        self.0.truncate(new_len);
+    }
+
+    /// Get mutable access to the inner [`String`].
+    ///
+    /// # Safety
+    /// Must not grow the [`String`] beyond the cap length `N`.
+    #[must_use]
+    #[allow(unsafe_code)]
+    pub unsafe fn get_mut(&mut self) -> &mut String {
+        &mut self.0
+    }
+}
+
 /// Error returned when converting a string longer than N
 #[derive(Debug)]
-pub struct CapStringLengthError<const N: usize>;
+pub struct CapStringLengthError<const N: usize>(pub usize);
 
 impl<const N: usize> core::fmt::Display for CapStringLengthError<N> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let len = self.0;
         f.write_fmt(format_args!(
-            "cap string length error, length must be in range 0..={N}"
+            "cap string length error, length {len} must be in range 0..={N}",
         ))
     }
 }
@@ -34,11 +121,17 @@ impl<const N: usize> TryFrom<String> for CapString<N> {
     type Error = CapStringLengthError<N>;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.len() < N {
+        if value.len() <= N {
             Ok(Self(value))
         } else {
-            Err(CapStringLengthError)
+            Err(CapStringLengthError(value.len()))
         }
+    }
+}
+
+impl<const N: usize> From<CapString<N>> for String {
+    fn from(value: CapString<N>) -> Self {
+        value.0
     }
 }
 
@@ -97,6 +190,23 @@ impl<'de, const N: usize> serde::Deserialize<'de> for CapString<N> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn manipulate_string_ok() -> Result<(), super::CapStringLengthError<5>> {
+        let s = String::from("abc");
+        let mut cap_s = super::CapString::<5>::try_from(s)?;
+        cap_s.push('d')?;
+        cap_s.pop();
+        cap_s.push_str("de")?;
+        Ok(())
+    }
+
+    #[test]
+    fn manipulate_string_err() {
+        assert!(super::CapString::<3>::try_from(String::from("abcd")).is_err());
+        // Emoji takes up more than 1 bytes so exceeds cap length
+        assert!(super::CapString::<3>::try_from(String::from("ab😃")).is_err());
+    }
+
     #[cfg(feature = "serde")]
     #[test]
     fn serde_string() -> serde_json::Result<()> {

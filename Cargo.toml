@@ -11,7 +11,7 @@ categories = ["config", "parsing"]
 rust-version = "1.60"
 
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "warn"
 missing_docs = "warn"
 
 [lints.clippy]
