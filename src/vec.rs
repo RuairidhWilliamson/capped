@@ -100,26 +100,32 @@ impl<'de, const N: usize, T: serde::Deserialize<'de>> serde::Deserialize<'de> fo
 
 #[cfg(test)]
 mod tests {
+    use super::{CapVec, CapVecLengthError};
+
     #[test]
     fn from_vec() {
         assert_eq!(
-            super::CapVec::<3, u32>::try_from(vec![1, 2, 3]),
-            Ok(super::CapVec::<3, u32>(vec![1, 2, 3]))
+            CapVec::<3, u32>::try_from(vec![1, 2, 3]),
+            Ok(CapVec::<3, u32>(vec![1, 2, 3]))
         );
         assert_eq!(
-            super::CapVec::<3, _>::try_from(vec![1, 2, 3, 4]),
-            Err(super::CapVecLengthError::<3>(4))
+            CapVec::<3, _>::try_from(vec![1, 2, 3, 4]),
+            Err(CapVecLengthError::<3>(4))
         );
+        assert_eq!(CapVec::<3, u32>(vec![0, 1, 2]).as_ref(), &[0, 1, 2]);
+        let err = CapVec::<3, usize>::try_from(vec![1, 2, 3, 4]).unwrap_err();
+        let err_msg = err.to_string();
+        assert!(err_msg.contains("vec of length 4"));
+        assert!(err_msg.contains("longer than 3"));
     }
 
     #[cfg(feature = "serde")]
     #[test]
     fn serde_vec() -> serde_json::Result<()> {
-        let obj: super::CapVec<3, u32> = serde_json::from_str("[6, 3, 4]")?;
-        assert_eq!(obj, super::CapVec(vec![6, 3, 4]));
+        let obj: CapVec<3, u32> = serde_json::from_str("[6, 3, 4]")?;
+        assert_eq!(obj, CapVec(vec![6, 3, 4]));
 
-        let res: serde_json::Result<super::CapVec<3, u32>> =
-            serde_json::from_str("[24, 25, 26, 27]");
+        let res: serde_json::Result<CapVec<3, u32>> = serde_json::from_str("[24, 25, 26, 27]");
         assert!(res.is_err());
 
         Ok(())

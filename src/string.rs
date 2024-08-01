@@ -191,13 +191,28 @@ impl<'de, const N: usize> serde::Deserialize<'de> for CapString<N> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn manipulate_string_ok() -> Result<(), super::CapStringLengthError<5>> {
+    fn manipulate_string_ok() {
         let s = String::from("abc");
-        let mut cap_s = super::CapString::<5>::try_from(s)?;
-        cap_s.push('d')?;
+        let mut cap_s = super::CapString::<5>::try_from(s).unwrap();
+
+        cap_s.push('d').unwrap();
+        assert_eq!(cap_s.as_str(), "abcd");
+
         cap_s.pop();
-        cap_s.push_str("de")?;
-        Ok(())
+        assert_eq!(cap_s.as_ref(), "abc");
+
+        cap_s.push_str("de").unwrap();
+        assert_eq!(cap_s.to_string(), "abcde");
+
+        cap_s.truncate(2);
+        assert_eq!(cap_s.as_ref(), "ab");
+
+        #[allow(unsafe_code)]
+        let s = unsafe { cap_s.get_mut() };
+        s.push_str("ababab");
+
+        cap_s.clear();
+        assert_eq!(cap_s.into_inner(), "");
     }
 
     #[test]
@@ -205,6 +220,17 @@ mod tests {
         assert!(super::CapString::<3>::try_from(String::from("abcd")).is_err());
         // Emoji takes up more than 1 bytes so exceeds cap length
         assert!(super::CapString::<3>::try_from(String::from("ab😃")).is_err());
+
+        let mut cap_s = super::CapString::<3>::try_from(String::from("hi")).unwrap();
+        assert!(cap_s.push_str("abc").is_err());
+        assert!(cap_s.push('h').is_ok());
+        assert!(cap_s
+            .push('h')
+            .unwrap_err()
+            .to_string()
+            .contains("length 4 must be in range 0..=3"));
+        assert!(cap_s.push('h').is_err());
+        assert_eq!(String::from(cap_s), "hih");
     }
 
     #[cfg(feature = "serde")]

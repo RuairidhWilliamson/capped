@@ -1,4 +1,29 @@
+use core::marker::PhantomData;
 use core::ops::Range;
+
+/// Error produced when a cap is exceeded for the type T
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapError<T>(pub PhantomData<T>);
+
+impl<T, U> core::fmt::Display for CapError<T>
+where
+    T: CapNum<Inner = U>,
+    U: core::fmt::Display,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let rng = T::range();
+        let start = rng.start;
+        let end = rng.end;
+        f.write_fmt(format_args!("value is not in range {start}..{end}"))
+    }
+}
+
+impl<T> std::error::Error for CapError<T>
+where
+    Self: core::fmt::Display,
+    T: core::fmt::Debug,
+{
+}
 
 pub trait CapNum {
     type Inner;
@@ -41,13 +66,13 @@ macro_rules! num {
         }
 
         impl<const N: $inner> TryFrom<$inner> for $cap_name<N> {
-            type Error = crate::error::CapError<Self>;
+            type Error = super::CapError<Self>;
 
             fn try_from(value: $inner) -> Result<Self, Self::Error> {
                 if value < N {
                     Ok(Self(value))
                 } else {
-                    Err(crate::error::CapError(core::marker::PhantomData))
+                    Err(super::CapError(core::marker::PhantomData))
                 }
             }
         }
@@ -71,7 +96,31 @@ macro_rules! num {
                 assert_eq!($cap_name::<5>::try_from(4), Ok($cap_name(4)));
                 assert_eq!(
                     $cap_name::<5>::try_from(5),
-                    Err(crate::error::CapError(PhantomData))
+                    Err(crate::num::CapError(PhantomData))
+                );
+                let c = $cap_name::<10>::new_wrap(29);
+                assert_eq!(c.into_inner(), 9);
+                assert_eq!(*c, 9);
+                assert_eq!(<$cap_name::<10> as crate::num::CapNum>::range(), 0..10);
+                assert!($cap_name::<240>::try_from(250)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("not in range 0..240"));
+            }
+
+            #[test]
+            fn wrapping_add() {
+                assert_eq!(
+                    $cap_name::<10>::try_from(4).unwrap().wrapping_add(15),
+                    $cap_name::<10>(9)
+                );
+                assert_eq!(
+                    $cap_name::<10>::new_wrap(9).wrapping_add(249),
+                    $cap_name::<10>(8)
+                );
+                assert_eq!(
+                    $cap_name::<240>(239).wrapping_add(255),
+                    $cap_name::<240>(14)
                 );
             }
 
