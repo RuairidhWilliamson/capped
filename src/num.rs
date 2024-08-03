@@ -50,10 +50,37 @@ macro_rules! num {
                 Self((self.0 + rhs % N) % N)
             }
 
+            /// Takes the current value of [`Self`] and increments it by 1 wrapping if it exceeds the limit `N`.
+            #[must_use]
+            pub fn take_increment(&mut self) -> Self {
+                let out = *self;
+                *self = self.wrapping_add(1);
+                out
+            }
+
             /// Get the inner value
             #[must_use]
             pub const fn into_inner(self) -> $inner {
                 self.0
+            }
+        }
+
+        // TODO: Does this violate PartialEq's requirement for transitive relation?
+        // e.g. a == b && b == c => a == c
+        // Specifically if:
+        // let a = Cap<3>(2);
+        // let b = 2;
+        // let c = Cap<4>(2);
+        // Then a == c is a compile error because they have different `N`
+        impl<const N: $inner> PartialEq<$inner> for $cap_name<N> {
+            fn eq(&self, other: &$inner) -> bool {
+                self.0 == *other
+            }
+        }
+
+        impl<const N: $inner> PartialEq<$cap_name<N>> for $inner {
+            fn eq(&self, other: &$cap_name<N>) -> bool {
+                *self == other.0
             }
         }
 
@@ -106,6 +133,22 @@ macro_rules! num {
                     .unwrap_err()
                     .to_string()
                     .contains("not in range 0..240"));
+            }
+
+            #[test]
+            fn take_increment() {
+                let mut c = $cap_name::<3>::new_wrap(1);
+                assert_eq!(c.take_increment(), $cap_name::<3>(1));
+                assert_eq!(c, $cap_name::<3>(2));
+                assert_eq!(c.take_increment(), $cap_name::<3>(2));
+                assert_eq!(c.take_increment(), $cap_name::<3>(0));
+            }
+
+            #[test]
+            fn inner_eq() {
+                assert_eq!($cap_name::<5>::new_wrap(2), $cap_name::<5>::new_wrap(2));
+                assert_eq!($cap_name::<5>::new_wrap(2), 2);
+                assert_eq!(2, $cap_name::<5>::new_wrap(2));
             }
 
             #[test]
