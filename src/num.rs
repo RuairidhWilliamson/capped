@@ -170,11 +170,22 @@ macro_rules! num {
             #[cfg(feature = "serde")]
             #[test]
             fn serde_inner() -> serde_json::Result<()> {
+                assert_eq!(
+                    serde_json::to_string(&$cap_name::<10>(3))?,
+                    String::from("3")
+                );
                 let obj: Vec<$cap_name<10>> = serde_json::from_str("[6, 9]")?;
                 assert_eq!(obj, vec![$cap_name(6), $cap_name(9)]);
 
                 let res: serde_json::Result<Vec<$cap_name<10>>> = serde_json::from_str("[10]");
                 assert!(res.is_err());
+
+                assert_eq!(
+                    serde_json::from_str::<$cap_name::<6>>(&serde_json::to_string(
+                        &$cap_name::<5>(3)
+                    )?)?,
+                    $cap_name::<6>(3)
+                );
 
                 Ok(())
             }

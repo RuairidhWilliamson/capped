@@ -1,6 +1,67 @@
-/// [`CapVec`] is a Vec with a limit on its length, its length must be in the range `0..=N`.
+/// [`CapVec`] is a [`Vec`] with a limit on its length, its length must be in the range `0..=N`.
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub struct CapVec<const N: usize, T>(Vec<T>);
+
+impl<const N: usize, T> CapVec<N, T> {
+    /// Gets the length of the vector
+    ///
+    /// Guaranteed to be in the range `0..=N`.
+    ///
+    /// See [`Vec::len`]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns [`true`] if the vector contains no elements
+    ///
+    /// See [`Vec::is_empty`]
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Pushes an element on to the end of the [`CapVec`] if there is space returns [`None`], otherwise returns [`Some`] `element`.
+    ///
+    /// See [`Vec::push`]
+    #[must_use]
+    pub fn push(&mut self, element: T) -> Option<T> {
+        let len = self.0.len() + 1;
+        if len <= N {
+            self.0.push(element);
+            None
+        } else {
+            Some(element)
+        }
+    }
+
+    /// Removes the last element from the [`CapVec`] and returns it.
+    ///
+    /// See [`Vec::pop`]
+    pub fn pop(&mut self) -> Option<T> {
+        self.0.pop()
+    }
+
+    /// Clears the [`CapVec`] setting the length to `0`.
+    ///
+    /// See [`Vec::clear`]
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    /// Truncate the [`CapVec`] to `len`.
+    ///
+    /// See [`Vec::truncate`]
+    pub fn truncate(&mut self, len: usize) {
+        self.0.truncate(len);
+    }
+
+    /// Get the underlying [`Vec`]
+    #[must_use]
+    pub fn into_inner(self) -> Vec<T> {
+        self.0
+    }
+}
 
 impl<const N: usize, T> AsRef<Vec<T>> for CapVec<N, T> {
     fn as_ref(&self) -> &Vec<T> {
@@ -22,6 +83,12 @@ impl<const N: usize> core::fmt::Display for CapVecLengthError<N> {
 }
 
 impl<const N: usize> std::error::Error for CapVecLengthError<N> {}
+
+impl<const N: usize, T> From<CapVec<N, T>> for Vec<T> {
+    fn from(value: CapVec<N, T>) -> Self {
+        value.0
+    }
+}
 
 impl<const N: usize, T> TryFrom<Vec<T>> for CapVec<N, T> {
     type Error = CapVecLengthError<N>;
@@ -113,10 +180,28 @@ mod tests {
             Err(CapVecLengthError::<3>(4))
         );
         assert_eq!(CapVec::<3, u32>(vec![0, 1, 2]).as_ref(), &[0, 1, 2]);
+        assert_eq!(Vec::from(CapVec::<3, u32>(vec![0, 1])), vec![0, 1]);
         let err = CapVec::<3, usize>::try_from(vec![1, 2, 3, 4]).unwrap_err();
         let err_msg = err.to_string();
         assert!(err_msg.contains("vec of length 4"));
         assert!(err_msg.contains("longer than 3"));
+    }
+
+    #[test]
+    fn manipulate_vec() {
+        let mut v = CapVec::<3, u32>::default();
+        assert!(v.is_empty());
+        assert_eq!(v.push(1), None);
+        assert_eq!(v.push(1), None);
+        assert_eq!(v.push(1), None);
+        assert_eq!(v.push(1), Some(1));
+        assert_eq!(v.pop(), Some(1));
+        v.truncate(1);
+        assert_eq!(v.len(), 1);
+        v.clear();
+        assert!(v.is_empty());
+        assert_eq!(v.push(1), None);
+        assert_eq!(v.into_inner(), vec![1]);
     }
 
     #[cfg(feature = "serde")]
@@ -127,6 +212,14 @@ mod tests {
 
         let res: serde_json::Result<CapVec<3, u32>> = serde_json::from_str("[24, 25, 26, 27]");
         assert!(res.is_err());
+
+        assert_eq!(
+            serde_json::from_str::<CapVec<3, i32>>(&serde_json::to_string(&CapVec::<3, i32>(
+                vec![1, 2]
+            ))?)?
+            .as_ref(),
+            &[1, 2]
+        );
 
         Ok(())
     }
