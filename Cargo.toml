@@ -12,18 +12,36 @@ rust-version = "1.60"
 
 [lints.rust]
 unsafe_code = "warn"
-missing_docs = "warn"
+# unused_crate_dependencies = "warn"
 
 [lints.clippy]
-pedantic = { level = "warn", priority = -1 }
+# Cargo
+cargo_common_metadata = "warn"
+wildcard_dependencies = "warn"
+
+# Restriction
+allow_attributes = "warn"
+clone_on_ref_ptr = "warn"
+create_dir = "warn"
+dbg_macro = "warn"
+exit = "warn"
+string_to_string = "warn"
+undocumented_unsafe_blocks = "warn"
+unused_result_ok = "warn"
+unused_trait_names = "warn"
+unwrap_used = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
+
+# Nursery
 nursery = { level = "warn", priority = -1 }
-cargo = { level = "warn", priority = -1 }
-
-std_instead_of_core = "warn"
-std_instead_of_alloc = "warn"
-
-module_name_repetitions = "allow"
+significant_drop_tightening = "allow"
+suboptimal_flops = "allow"
 option_if_let_else = "allow"
+
+# Pedantic
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
 
 [features]
 default = []

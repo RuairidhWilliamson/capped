@@ -26,8 +26,12 @@ impl<const N: usize, T> CapVec<N, T> {
     /// See [`Vec::push`]
     #[must_use]
     pub fn push(&mut self, element: T) -> Option<T> {
+        debug_assert!(self.0.len() <= N);
+        debug_assert!(self.0.capacity() <= N);
         let len = self.0.len() + 1;
         if len <= N {
+            // OPTIMISE: we should speculatively reserve more capacity up to the limit
+            self.0.reserve_exact(1);
             self.0.push(element);
             None
         } else {

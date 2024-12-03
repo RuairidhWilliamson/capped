@@ -53,8 +53,12 @@ impl<const N: usize> CapString<N> {
     /// # Errors
     /// Will return `Err` if the new string length would be greater than the cap string limit `N`.
     pub fn push(&mut self, ch: char) -> Result<(), CapStringLengthError<N>> {
+        debug_assert!(self.0.len() <= N);
+        debug_assert!(self.0.capacity() <= N);
         let len = self.0.len() + ch.len_utf8();
         if len <= N {
+            // OPTIMISE: we should speculatively reserve more capacity up to the limit
+            self.0.reserve_exact(1);
             self.0.push(ch);
             Ok(())
         } else {
@@ -208,6 +212,7 @@ mod tests {
         assert_eq!(cap_s.as_ref(), "ab");
 
         #[allow(unsafe_code)]
+        // Safety: We will only push one more element, this won't go beyond the length of the cap string
         let s = unsafe { cap_s.get_mut() };
         s.push_str("ababab");
 
